@@ -9,17 +9,20 @@ from django.contrib.auth.models import BaseUserManager
 class UserProfileManager(BaseUserManager):
     """Manager for user profiles"""
 
-    def create_user(self, email, name, password = None):#None password won't work, need to be a hash, until set, we won't be able to authenticate the user
+    def create_user(self, email, name, age, password = None):#None password won't work, need to be a hash, until set, we won't be able to authenticate the user
         """Create a new user profile"""
         if not email:
             raise ValueError("User must have an email adress")
+
+        if age<18 or age>100:
+            raise ValueError("Wrong age, must be 18 or older and 100 or younger")
         
         #Normalize second half of the email --> Always case Insensitive
         #Some e-mail providers such as gmail, hotmail make the first half case insensitive to but could be case sensitive depending on the provider
-        email = self.normalize(email)
+        email = self.normalize_email(email)
 
         #Create user model
-        user = self.model(email = email, name = name)
+        user = self.model(email = email, name = name, age = age)
         #Equivalent of user=UserProfile(email= email, name = name)
 
         #Converted into a hash, never store in plain text
@@ -28,9 +31,9 @@ class UserProfileManager(BaseUserManager):
 
         return user
 
-    def create_superuser(self, email, name, password): #We wan't all user to have a password
+    def create_superuser(self, email, name, age, password): #We wan't all user to have a password
         """Create and save a new superuser with given details"""        
-        user = self.create_user(email, name, password)
+        user = self.create_user(email, name, age, password)
         user.is_superuser = True
         user.is_staff = True
         user.save(using=self._db)#Standart specify a database, best Practise is self._db for supporting multiple db's
@@ -42,6 +45,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     """Database model for users in the system"""
     email = models.EmailField(max_length = 255, unique=True)
     name = models.CharField(max_length=255)
+    age = models.IntegerField(default = 15)
     
     #Fields for the permission system, comes from PermissionsMixin
     is_active= models.BooleanField(default = True) #Determine if the user profile is active or not, set default for true
@@ -53,7 +57,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     #Add couple more fields to the class
     # Work with Django Admin and Django authentication system
     USERNAME_FIELD = 'email'  #Instead of username, use email to authenticate. Username(email) is required by default
-    REQUIRED_FIELDS= ['name']
+    REQUIRED_FIELDS= ['name', 'age']
 
     
     #Add functions to Django interacts with the User model
@@ -65,6 +69,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         """Retrieve short name of user"""
         return self.name
+
+    def get_age(self):
+        """Retrieve the Age"""
+        return self.age        
 
     #Return string representation of model
     def __str__(self):
